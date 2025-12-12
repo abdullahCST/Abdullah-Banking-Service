@@ -36,7 +36,7 @@ I included all the information about my made-up "Abdullah Banking Service," like
 **PIN:** `4444`
 
 ## Made by
-ABDULLAH MD
-ID-2442130258
-Computer Science and Technology (CST-B) Student
+ABDULLAH MD;
+ID-2442130258;
+Computer Science and Technology (CST-B);
 Nantong University
