@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 
@@ -8,11 +8,17 @@ namespace AbdullahBankingService
     {
         public string AccountNumber { get; }
         public string FullName { get; set; }
-        private string AccountPin { get; }
+        private string AccountPin { get; set; }
         public decimal Balance { get; private set; }
         public DateTime LastLogin { get; set; }
         public DateTime AccountCreated { get; }
         private List<string> TransactionHistory { get; }
+        public string StudentID { get; set; }
+        public string University { get; set; }
+        public string SecurityQuestion { get; private set; }
+        public string SecurityAnswer { get; private set; }
+        public bool CardLocked { get; private set; }
+        public bool TransactionAlerts { get; private set; }
 
         public CustomerAccount(string accNum, string name, string pin, decimal initialDeposit)
         {
@@ -22,6 +28,12 @@ namespace AbdullahBankingService
             Balance = initialDeposit;
             AccountCreated = DateTime.Now;
             LastLogin = DateTime.Now;
+            StudentID = "2442130258";
+            University = "Nantong University";
+            SecurityQuestion = "";
+            SecurityAnswer = "";
+            CardLocked = false;
+            TransactionAlerts = true;
             TransactionHistory = new List<string>
             {
                 $"[{DateTime.Now:yyyy-MM-dd HH:mm}] ACCOUNT CREATED. Initial Deposit: {initialDeposit}"
@@ -31,6 +43,38 @@ namespace AbdullahBankingService
         public bool CheckPin(string inputPin)
         {
             return inputPin == AccountPin;
+        }
+
+        public void ChangePin(string oldPin, string newPin)
+        {
+            if (oldPin == AccountPin)
+            {
+                AccountPin = newPin;
+                TransactionHistory.Add($"[{DateTime.Now:yyyy-MM-dd HH:mm}] PIN CHANGED");
+            }
+        }
+
+        public void SetSecurityQuestion(string question, string answer)
+        {
+            SecurityQuestion = question;
+            SecurityAnswer = answer;
+        }
+
+        public bool VerifySecurityAnswer(string answer)
+        {
+            return answer == SecurityAnswer;
+        }
+
+        public void ToggleCardLock(bool lockCard)
+        {
+            CardLocked = lockCard;
+            string status = lockCard ? "LOCKED" : "UNLOCKED";
+            TransactionHistory.Add($"[{DateTime.Now:yyyy-MM-dd HH:mm}] CARD {status}");
+        }
+
+        public void ToggleTransactionAlerts(bool enable)
+        {
+            TransactionAlerts = enable;
         }
 
         public bool MakeDeposit(decimal amount)
@@ -43,6 +87,12 @@ namespace AbdullahBankingService
 
             Balance += amount;
             TransactionHistory.Add($"[{DateTime.Now:yyyy-MM-dd HH:mm}] DEPOSIT: +{amount}. New Balance: {Balance}");
+
+            if (TransactionAlerts)
+            {
+                Console.WriteLine($"   [ALERT]: Deposit of {amount} CNY received at {DateTime.Now:HH:mm}");
+            }
+
             Console.WriteLine($"   Deposited {amount}");
             return true;
         }
@@ -52,6 +102,12 @@ namespace AbdullahBankingService
             if (!CheckPin(pin))
             {
                 Console.WriteLine("   Invalid PIN.");
+                return false;
+            }
+
+            if (CardLocked)
+            {
+                Console.WriteLine("   Card is locked. Please visit branch to unlock.");
                 return false;
             }
 
@@ -80,6 +136,12 @@ namespace AbdullahBankingService
 
             Balance -= amount;
             TransactionHistory.Add($"[{DateTime.Now:yyyy-MM-dd HH:mm}] WITHDRAWAL: -{amount}. New Balance: {Balance}");
+
+            if (TransactionAlerts)
+            {
+                Console.WriteLine($"   [ALERT]: Withdrawal of {amount} CNY made at {DateTime.Now:HH:mm}");
+            }
+
             Console.WriteLine($"   Withdrew {amount}");
             return true;
         }
@@ -92,6 +154,9 @@ namespace AbdullahBankingService
             Console.WriteLine($"   Account: {AccountNumber}");
             Console.WriteLine($"   Holder: {FullName}");
             Console.WriteLine($"   Balance: {Balance}");
+            Console.WriteLine($"   Student ID: {StudentID}");
+            Console.WriteLine($"   University: {University}");
+            Console.WriteLine($"   Card Status: {(CardLocked ? "LOCKED" : "Active")}");
             Console.WriteLine($"   Created: {AccountCreated:yyyy-MM-dd}");
             Console.WriteLine($"   Last Login: {LastLogin:yyyy-MM-dd HH:mm}");
             Console.WriteLine("==================================================\n");
@@ -142,6 +207,11 @@ namespace AbdullahBankingService
         {
             Balance += amount;
             TransactionHistory.Add($"[{DateTime.Now:yyyy-MM-dd HH:mm}] TRANSFER RECEIVED: +{amount} from {senderName}. New Balance: {Balance}");
+
+            if (TransactionAlerts)
+            {
+                Console.WriteLine($"   [ALERT]: Transfer of {amount} CNY received from {senderName} at {DateTime.Now:HH:mm}");
+            }
         }
 
         public bool MakePayment(decimal amount, string serviceType, string reference)
@@ -156,10 +226,128 @@ namespace AbdullahBankingService
         }
     }
 
+    public class HelpDesk
+    {
+        private static List<string> complaints = new List<string>();
+
+        public static void ReportLostCard(CustomerAccount account)
+        {
+            Console.WriteLine("\n==================================================");
+            Console.WriteLine("           REPORT LOST/STOLEN CARD");
+            Console.WriteLine("==================================================");
+            Console.WriteLine($"   Account: {account.AccountNumber}");
+            Console.WriteLine($"   Holder: {account.FullName}");
+            Console.Write("   When did you lose it? ");
+            string when = Console.ReadLine();
+            Console.Write("   Last location used? ");
+            string location = Console.ReadLine();
+
+            account.ToggleCardLock(true);
+
+            string ticket = $"LOST-CARD-{DateTime.Now:yyyyMMddHHmmss}";
+            string complaint = $"[{DateTime.Now}] Ticket: {ticket} | Account: {account.AccountNumber} | Type: Lost Card | When: {when} | Location: {location}";
+            complaints.Add(complaint);
+
+            SaveComplaintToFile(complaint);
+
+            Console.WriteLine("\n   ✓ Card locked for security");
+            Console.WriteLine($"   ✓ Ticket created: {ticket}");
+            Console.WriteLine("   ✓ Visit any branch with your passport to get replacement");
+            Console.WriteLine("   ✓ Contact: +86 1772 164 6613 (24/7 Lost Card Hotline)");
+        }
+
+        public static void ReportTransactionIssue(CustomerAccount account)
+        {
+            Console.WriteLine("\n==================================================");
+            Console.WriteLine("           REPORT TRANSACTION ISSUE");
+            Console.WriteLine("==================================================");
+            Console.Write("   Transaction Date (YYYY-MM-DD): ");
+            string date = Console.ReadLine();
+            Console.Write("   Transaction Amount: ");
+            string amount = Console.ReadLine();
+            Console.Write("   Issue Description: ");
+            string description = Console.ReadLine();
+
+            string ticket = $"TRX-{DateTime.Now:yyyyMMddHHmmss}";
+            string complaint = $"[{DateTime.Now}] Ticket: {ticket} | Account: {account.AccountNumber} | Type: Transaction Issue | Date: {date} | Amount: {amount} | Issue: {description}";
+            complaints.Add(complaint);
+
+            SaveComplaintToFile(complaint);
+
+            Console.WriteLine($"\n   ✓ Ticket created: {ticket}");
+            Console.WriteLine("   ✓ Our team will investigate within 2 business days");
+            Console.WriteLine("   ✓ You will receive SMS update");
+        }
+
+        public static void SubmitGeneralInquiry(CustomerAccount account)
+        {
+            Console.WriteLine("\n==================================================");
+            Console.WriteLine("              GENERAL INQUIRY");
+            Console.WriteLine("==================================================");
+            Console.WriteLine("   1. Account Opening Requirements");
+            Console.WriteLine("   2. International Transfer Help");
+            Console.WriteLine("   3. PSB Registration Support");
+            Console.WriteLine("   4. Student Loan Information");
+            Console.WriteLine("   5. Other");
+            Console.Write("\n   Select inquiry type: ");
+            string type = Console.ReadLine();
+
+            Console.Write("   Your message: ");
+            string message = Console.ReadLine();
+
+            string ticket = $"INQ-{DateTime.Now:yyyyMMddHHmmss}";
+            string complaint = $"[{DateTime.Now}] Ticket: {ticket} | Account: {account.AccountNumber} | Type: Inquiry-{type} | Message: {message}";
+            complaints.Add(complaint);
+
+            SaveComplaintToFile(complaint);
+
+            Console.WriteLine($"\n   ✓ Ticket created: {ticket}");
+            Console.WriteLine("   ✓ We'll respond within 24 hours via email");
+            Console.WriteLine("   ✓ Check your registered email for updates");
+        }
+
+        public static void ViewComplaintStatus()
+        {
+            Console.WriteLine("\n==================================================");
+            Console.WriteLine("           COMPLAINT STATUS");
+            Console.WriteLine("==================================================");
+
+            if (complaints.Count == 0)
+            {
+                Console.WriteLine("   No complaints submitted.");
+                return;
+            }
+
+            foreach (var complaint in complaints)
+            {
+                Console.WriteLine($"   • {complaint}");
+            }
+        }
+
+        private static void SaveComplaintToFile(string complaint)
+        {
+            string fileName = "complaints_log.txt";
+            string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            string fullPath = Path.Combine(desktopPath, fileName);
+
+            try
+            {
+                using (StreamWriter writer = File.AppendText(fullPath))
+                {
+                    writer.WriteLine(complaint);
+                }
+            }
+            catch
+            {
+            }
+        }
+    }
+
     class Program
     {
         private static List<CustomerAccount> allCustomers = new List<CustomerAccount>();
         private static CustomerAccount currentCustomer = null;
+        private static List<DateTime> loginHistory = new List<DateTime>();
 
         private static readonly List<string> greetings = new List<string>
         {
@@ -278,6 +466,7 @@ namespace AbdullahBankingService
             if (currentCustomer != null)
             {
                 currentCustomer.LastLogin = DateTime.Now;
+                loginHistory.Add(DateTime.Now);
                 Console.WriteLine($"\n   Welcome, {currentCustomer.FullName}!");
                 Pause();
                 CustomerDashboard();
@@ -344,8 +533,11 @@ namespace AbdullahBankingService
                 Console.WriteLine("   6. Transaction History");
                 Console.WriteLine("   7. Currency Converter");
                 Console.WriteLine("   8. Payment Hub");
-                Console.WriteLine("   9. Logout");
-                Console.Write("\n   Select option (1-9): ");
+                Console.WriteLine("   9. Virtual Student Card");
+                Console.WriteLine("   10. Security Center");
+                Console.WriteLine("   11. Help & Complaint Desk");
+                Console.WriteLine("   12. Logout");
+                Console.Write("\n   Select option (1-12): ");
 
                 string choice = Console.ReadLine();
 
@@ -359,8 +551,260 @@ namespace AbdullahBankingService
                     case "6": ViewTransactionHistory(); break;
                     case "7": CurrencyConverter(); break;
                     case "8": PaymentHub(); break;
-                    case "9": inDashboard = false; currentCustomer = null; break;
+                    case "9": ShowVirtualCard(); break;
+                    case "10": SecurityCenter(); break;
+                    case "11": HelpComplaintDesk(); break;
+                    case "12": inDashboard = false; currentCustomer = null; break;
                     default: Console.WriteLine("   Invalid selection."); Pause(); break;
+                }
+            }
+        }
+
+        static void ShowVirtualCard()
+        {
+            Console.Clear();
+            Console.WriteLine("\n==================================================");
+            Console.WriteLine("           VIRTUAL STUDENT CARD");
+            Console.WriteLine("==================================================");
+            Console.WriteLine("┌──────────────────────────────────────────┐");
+            Console.WriteLine("│   ABDULLAH BANK - VIRTUAL STUDENT CARD   │");
+            Console.WriteLine("├──────────────────────────────────────────┤");
+            Console.WriteLine($"│  Holder: {currentCustomer.FullName,-27}     │");
+            Console.WriteLine($"│  Bank ACC: {currentCustomer.AccountNumber,-22}        │");
+            Console.WriteLine($"│  University: {currentCustomer.University,-21}       │");
+            Console.WriteLine($"│  Student ID: {currentCustomer.StudentID,-22}      │");
+            Console.WriteLine($"│  Valid Until: 2026-12-31                 │");
+            Console.WriteLine($"│  Card Status: {(currentCustomer.CardLocked ? "LOCKED" : "ACTIVE"),-22}     │");
+            Console.WriteLine("└──────────────────────────────────────────┘");
+
+            Console.WriteLine("\n   Card Functions:");
+            Console.WriteLine("   1. Update Student ID");
+            Console.WriteLine("   2. Lock/Unlock Card");
+            Console.WriteLine("   3. Back to Dashboard");
+            Console.Write("\n   Select option: ");
+
+            string choice = Console.ReadLine();
+
+            switch (choice)
+            {
+                case "1":
+                    Console.Write("   Enter new Student ID: ");
+                    currentCustomer.StudentID = Console.ReadLine();
+                    Console.WriteLine("   Student ID updated.");
+                    break;
+                case "2":
+                    if (currentCustomer.CardLocked)
+                    {
+                        Console.WriteLine("   Card is currently LOCKED");
+                        Console.Write("   Unlock card? (Y/N): ");
+                        if (Console.ReadLine().ToUpper() == "Y")
+                        {
+                            currentCustomer.ToggleCardLock(false);
+                            Console.WriteLine("   Card unlocked.");
+                        }
+                    }
+                    else
+                    {
+                        Console.Write("   Lock card for security? (Y/N): ");
+                        if (Console.ReadLine().ToUpper() == "Y")
+                        {
+                            currentCustomer.ToggleCardLock(true);
+                            Console.WriteLine("   Card locked.");
+                        }
+                    }
+                    break;
+            }
+
+            Pause();
+        }
+
+        static void SecurityCenter()
+        {
+            bool inSecurity = true;
+
+            while (inSecurity)
+            {
+                Console.Clear();
+                Console.WriteLine("\n==================================================");
+                Console.WriteLine("              SECURITY CENTER");
+                Console.WriteLine("==================================================");
+                Console.WriteLine($"   Account: {currentCustomer.AccountNumber}");
+                Console.WriteLine($"   Last Login: {currentCustomer.LastLogin:yyyy-MM-dd HH:mm}");
+                Console.WriteLine("==================================================");
+
+                Console.WriteLine("\n   1. Change Login PIN");
+                Console.WriteLine("   2. Set Security Question");
+                Console.WriteLine("   3. Transaction Alerts Settings");
+                Console.WriteLine("   4. View Login History");
+                Console.WriteLine("   5. Back to Dashboard");
+                Console.Write("\n   Select option: ");
+
+                string choice = Console.ReadLine();
+
+                switch (choice)
+                {
+                    case "1":
+                        Console.Write("   Current PIN: ");
+                        string oldPin = Console.ReadLine();
+                        Console.Write("   New PIN (4 digits): ");
+                        string newPin = Console.ReadLine();
+                        currentCustomer.ChangePin(oldPin, newPin);
+                        Console.WriteLine("   PIN changed successfully.");
+                        Pause();
+                        break;
+
+                    case "2":
+                        if (string.IsNullOrEmpty(currentCustomer.SecurityQuestion))
+                        {
+                            Console.WriteLine("\n   Security Questions:");
+                            Console.WriteLine("   1. What is your mother's maiden name?");
+                            Console.WriteLine("   2. What city were you born in?");
+                            Console.WriteLine("   3. What is your favorite book?");
+                            Console.Write("\n   Select question (1-3): ");
+                            string qChoice = Console.ReadLine();
+
+                            string question = "";
+                            switch (qChoice)
+                            {
+                                case "1": question = "Mother's maiden name"; break;
+                                case "2": question = "Birth city"; break;
+                                case "3": question = "Favorite book"; break;
+                            }
+
+                            if (!string.IsNullOrEmpty(question))
+                            {
+                                Console.Write($"   Answer for '{question}': ");
+                                string answer = Console.ReadLine();
+                                currentCustomer.SetSecurityQuestion(question, answer);
+                                Console.WriteLine("   Security question set.");
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine($"   Current security question: {currentCustomer.SecurityQuestion}");
+                            Console.Write("   Change question? (Y/N): ");
+                            if (Console.ReadLine().ToUpper() == "Y")
+                            {
+                                Console.Write("   New question: ");
+                                string newQ = Console.ReadLine();
+                                Console.Write("   Answer: ");
+                                string newA = Console.ReadLine();
+                                currentCustomer.SetSecurityQuestion(newQ, newA);
+                                Console.WriteLine("   Security question updated.");
+                            }
+                        }
+                        Pause();
+                        break;
+
+                    case "3":
+                        Console.WriteLine($"\n   Transaction Alerts: {(currentCustomer.TransactionAlerts ? "ENABLED" : "DISABLED")}");
+                        Console.WriteLine("   1. Enable Alerts");
+                        Console.WriteLine("   2. Disable Alerts");
+                        Console.WriteLine("   3. Back");
+                        Console.Write("\n   Select: ");
+                        string alertChoice = Console.ReadLine();
+
+                        if (alertChoice == "1")
+                        {
+                            currentCustomer.ToggleTransactionAlerts(true);
+                            Console.WriteLine("   Alerts enabled.");
+                        }
+                        else if (alertChoice == "2")
+                        {
+                            currentCustomer.ToggleTransactionAlerts(false);
+                            Console.WriteLine("   Alerts disabled.");
+                        }
+                        Pause();
+                        break;
+
+                    case "4":
+                        Console.WriteLine("\n   Last 5 Logins:");
+                        if (loginHistory.Count == 0)
+                        {
+                            Console.WriteLine("   No login history.");
+                        }
+                        else
+                        {
+                            int start = Math.Max(0, loginHistory.Count - 5);
+                            for (int i = start; i < loginHistory.Count; i++)
+                            {
+                                Console.WriteLine($"   {i + 1}. {loginHistory[i]:yyyy-MM-dd HH:mm:ss}");
+                            }
+                        }
+                        Pause();
+                        break;
+
+                    case "5":
+                        inSecurity = false;
+                        break;
+                }
+            }
+        }
+
+        static void HelpComplaintDesk()
+        {
+            bool inHelpDesk = true;
+
+            while (inHelpDesk)
+            {
+                Console.Clear();
+                Console.WriteLine("\n==================================================");
+                Console.WriteLine("        24/7 HELP & COMPLAINT DESK");
+                Console.WriteLine("==================================================");
+                Console.WriteLine($"   Account: {currentCustomer.AccountNumber}");
+                Console.WriteLine($"   Name: {currentCustomer.FullName}");
+                Console.WriteLine("==================================================");
+
+                Console.WriteLine("\n   1. Report Lost/Stolen Card");
+                Console.WriteLine("   2. Report Transaction Issue");
+                Console.WriteLine("   3. General Inquiry");
+                Console.WriteLine("   4. View Complaint Status");
+                Console.WriteLine("   5. Emergency Contact");
+                Console.WriteLine("   6. Back to Dashboard");
+                Console.Write("\n   Select option: ");
+
+                string choice = Console.ReadLine();
+
+                switch (choice)
+                {
+                    case "1":
+                        HelpDesk.ReportLostCard(currentCustomer);
+                        Pause();
+                        break;
+
+                    case "2":
+                        HelpDesk.ReportTransactionIssue(currentCustomer);
+                        Pause();
+                        break;
+
+                    case "3":
+                        HelpDesk.SubmitGeneralInquiry(currentCustomer);
+                        Pause();
+                        break;
+
+                    case "4":
+                        HelpDesk.ViewComplaintStatus();
+                        Pause();
+                        break;
+
+                    case "5":
+                        Console.WriteLine("\n   EMERGENCY CONTACTS:");
+                        Console.WriteLine("   ---------------------------");
+                        Console.WriteLine("   Lost Card Hotline: +86 1772 164 6613");
+                        Console.WriteLine("   Fraud Department: +86 5138 501 2794");
+                        Console.WriteLine("   Police (PSB): 110");
+                        Console.WriteLine("   Ambulance: 120");
+                        Console.WriteLine("   Fire: 119");
+                        Console.WriteLine("\n   Our Branches (9 AM - 5 PM):");
+                        Console.WriteLine("   Nantong University Campus");
+                        Console.WriteLine("   Nantong City Center");
+                        Console.WriteLine("   Near Railway Station");
+                        Pause();
+                        break;
+
+                    case "6":
+                        inHelpDesk = false;
+                        break;
                 }
             }
         }
