@@ -22,8 +22,26 @@ This is the part I'm really proud of. I made it so you can pay for almost everyt
 - **Savings Calculator:** To see how much money I could make if I put some in a fixed deposit.
 - **Get Official Papers:** The program automatically saves a proper receipt to your computer desktop after every payment or when you want your account statement. It looks very official!
 
+**Virtual Student Card** 
+- A digital ID inside the app that combines your bank and student information. You can view it anytime and lock it immediately if you lose your phone.
+
+**Security Center**
+- A complete control panel for your account's safety:
+- Change your PIN anytime (requires your old PIN).
+- Set a security question (like your mother's name) for account recovery.
+- Turn transaction alerts ON/OFF to get a notification for every deposit, withdrawal, or transfer.
+-View your login history to see the last 5 times you logged in.
+
+**24/7 Help & Complaint Desk**
+- Direct help for common student problems:
+- Report a lost or stolen card – locks your card instantly in the system.
+- Report a transaction problem – creates a ticket number for bank staff to investigate.
+- Get emergency contacts – shows important numbers: Police (110), Ambulance (120), Fire (119), and the bank's hotline.
+- Every request gets a ticket number and is saved to a log file on your desktop.
+
 **About the Bank:**
 I included all the information about my made-up "Abdullah Banking Service," like its fake address at our Nantong University campus and phone number, to make it feel like a real local bank for students.
+
 ## How to Run
 1. Download the `Program.cs` file from this page.
 2. Open Visual Studio 2022.
